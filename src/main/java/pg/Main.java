@@ -5,82 +5,168 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import jakarta.persistence.Query;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
-        EntityManagerFactory emf = Persistence.createEntityManagerFactory("rpgPu");
-        EntityManager em;
+
         // dodawanie nowych wpisów
-        String[] mageNames = {"Dragonborn", "J'zargo", "Onmund", "Brelyna Maryon"};
-        int[] mageLvls = {10,2,4,4};
+        long cena = 10;
+        DatabaseController dc = new DatabaseController();
+        dc.add(new Browar("Browar_1", 9, null));
+        dc.add(new Piwo("Piwo_0", cena++, null));
 
-        em = emf.createEntityManager();
-        em.getTransaction().begin();
-        em.persist( new Tower("College of Winterhold", 9, null) );
-        em.getTransaction().commit();
-        em.close();
 
-        em = emf.createEntityManager();
-        em.getTransaction().begin();
-        em.persist(new Mage(mageNames[0], mageLvls[0], null));
-
-        em.getTransaction().commit();
-        em.close();
         for (int i = 1; i < 4; i++) {
-            em = emf.createEntityManager();
-            em.getTransaction().begin();
-            Tower tower = em.find(Tower.class, "College of Winterhold");
-            em.persist(new Mage(mageNames[i], mageLvls[i], tower));
-
-            em.getTransaction().commit();
-            em.close();
+            Browar browar = dc.findBrowar("Browar_1");
+            dc.add(new Piwo(String.format("Piwo_%d", i), cena++, browar));
         }
 
-        // usuwanie wpisów
-        //em = emf.createEntityManager();
+        System.out.println("Syntax: ");
+        System.out.println("print [piwo/browar] [all/cheaper]");
+        System.out.println("exit");
+        System.out.println("add/remove [piwo/browar]");
+        while(true) {
+            Scanner scanner = new Scanner(System.in);
+            String cmd = scanner.nextLine();
+            if (cmd.equals("exit"))
+                break;
 
-        //em.close();
+            //parse
+            String[] cmdTab = cmd.split(" ");
+            switch(cmdTab[0]) {
+                case "add": {
+                    switch(cmdTab[1]) {
+                        case "piwo": {
+                            Piwo piwo = new Piwo();
+                            System.out.print("nazwa: ");
+                            piwo.setName(scanner.nextLine());
+                            while(true) {
+                                try {
+                                    System.out.print("cena: ");
+                                    piwo.setCena(Long.parseLong(scanner.nextLine()));
+                                    break;
+                                } catch (NumberFormatException e) {
+                                    System.out.println("Niepoprawny format");
+                                }
+                            }
+                            System.out.print("browar: ");
+                            piwo.setBrowar(dc.findBrowar(scanner.nextLine()));
+                            dc.add(piwo);
+                            break;
+                        }
+                        case "browar": {
+                            Browar browar = new Browar();
+                            System.out.print("nazwa: ");
+                            browar.setName(scanner.nextLine());
+                            while(true) {
+                                try {
+                                    System.out.print("wartość: ");
+                                    browar.setWartość(Long.parseLong(scanner.nextLine()));
+                                    break;
+                                } catch (NumberFormatException e) {
+                                    System.out.println("Niepoprawny format");
+                                }
+                            }
+                            dc.add(browar);
+                            break;
+                        }
+                        default:
+                            System.out.println("Unknown argument");
+                            break;
+                    }
+                    break;
+                }
+                case "remove": {
+                    System.out.print("nazwa: ");
+                    switch (cmdTab[1]) {
+                        case "piwo": {
+                            dc.removePiwo(scanner.nextLine());
+                            break;
+                        }
+                        case "browar": {
+                            dc.removeBrowar(scanner.nextLine());
+                            break;
+                        }
+                        default:
+                            System.out.println("Unknown argument");
+                            break;
+                    }
+                    break;
+                }
+                case "print": {
+                    switch(cmdTab[1]) {
+                        case "piwo": {
+                            switch (cmdTab[2]) {
+                                case "all": {
+                                    dc.findAllPiwo();
+                                    break;
+                                }
+                                case "cheaper": {
+                                    System.out.print("cena: ");
+                                    try {
+                                        dc.findCheaper(Long.parseLong(scanner.nextLine()));
+                                    } catch (NumberFormatException e) {
+                                        System.out.println("Niepoprawny format");
+                                    }
+                                    break;
+                                }
+                                default:
+                                    System.out.println("Unknown argument");
+                                    break;
+                            }
+                            break;
+                        }
+                        case "browar": {
+                            switch (cmdTab[2]) {
+                                case "all": {
+                                    dc.findAllBrowar();
+                                    break;
+                                }
+                                case "cheaper": {
+                                    System.out.print("Nazwa browaru: ");
+                                    String browar = scanner.nextLine();
+                                    System.out.print("cena: ");
+                                    try {
+                                        dc.findCheaper(browar, Long.parseLong(scanner.nextLine()));
+                                    } catch (NumberFormatException e) {
+                                        System.out.println("Niepoprawny format");
+                                    }
+                                    break;
+                                }
+                                case "other": {
+                                    System.out.print("cena: ");
+                                    try {
+                                        dc.findWithCheapBeer(Long.parseLong(scanner.nextLine()));
+                                    } catch (NumberFormatException e) {
+                                        System.out.println("Niepoprawny format");
+                                    }
+                                    break;
+                                }
+                                default:
+                                    System.out.println("Unknown argument");
+                                    break;
+                            }
+                            break;
+                        }
+                        default:
+                            System.out.println("Unknown argument");
+                            break;
+                    }
+                    break;
+                }
+                case "query": {
+                    System.out.print("query: ");
+                    dc.query(scanner.nextLine());
+                }
+                default: {
+                    System.out.println("Unknown command");
+                    break;
+                }
+            }
+        }
 
-        // wyświetlanie wpisów
-        em = emf.createEntityManager();
-        List<Mage> mages = em.createNamedQuery("Mage.findAll").getResultList();
-        for (Mage mage : mages)
-            System.out.println(mage);
-
-        List<Tower> towers = em.createNamedQuery("Tower.findAll").getResultList();
-        for (Tower tower : towers)
-            System.out.println(tower);
-        em.close();
-        // zapytania
-
-        em = emf.createEntityManager();
-        Query magesWithHigherLvl = em.createNamedQuery("Mage.findWithHigherLevel")
-                .setParameter("level", 3);
-
-        for (Mage mage : (List<Mage>)magesWithHigherLvl.getResultList())
-            System.out.println(mage);
-
-        Query towersSmallerThan = em.createNamedQuery("Tower.findSmallerThan")
-                .setParameter("height", 10);
-        for (Tower tower : (List<Tower>)towersSmallerThan.getResultList())
-            System.out.println(tower);
-
-        /*Query allMagesWithHigherLevelThanTower = em.createQuery(
-                "SELECT m FROM Mage m" +
-                        "WHERE ",
-                Mage.class);
-        */
-        Query towerMages = em.createQuery(
-                "SELECT m FROM Mage m " +
-                        "WHERE m.level > " +
-                        "(SELECT MAX(m.level) FROM Mage m " +
-                        "WHERE m.tower.name = :tower " +
-                        "GROUP BY m.tower)");
-        for (Mage mage : (List<Mage>)towerMages.setParameter("tower", "College of Winterhold").getResultList())
-            System.out.println(mage);
-        em.close();
-        emf.close();
+        dc.close();
     }
 }
